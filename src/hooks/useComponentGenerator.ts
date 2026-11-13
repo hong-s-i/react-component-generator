@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { GeneratedComponent, Provider } from '../types';
+import { validatePrompt } from '../utils/validatePrompt';
 
 interface UseComponentGeneratorReturn {
   components: GeneratedComponent[];
@@ -16,6 +17,11 @@ export function useComponentGenerator(): UseComponentGeneratorReturn {
   const [error, setError] = useState<string | null>(null);
 
   const generate = useCallback(async (prompt: string, apiKey: string | undefined, provider: Provider) => {
+    const validationError = validatePrompt(prompt);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     setIsLoading(true);
     setError(null);
 
