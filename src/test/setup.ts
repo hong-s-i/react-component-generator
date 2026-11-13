@@ -1,8 +1,18 @@
 import '@testing-library/jest-dom/vitest';
-import { afterEach } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
-// 각 테스트 후 렌더된 DOM을 정리해 테스트 간 격리를 보장한다.
+beforeEach(() => {
+  const entries = new Map<string, string>();
+  vi.stubGlobal('localStorage', {
+    getItem: (key: string) => entries.get(key) ?? null,
+    setItem: (key: string, value: string) => { entries.set(key, value); },
+    removeItem: (key: string) => { entries.delete(key); },
+    clear: () => entries.clear(),
+  });
+});
+
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
 });

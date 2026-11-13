@@ -27,3 +27,10 @@ describe('PromptInput', () => {
     expect(screen.getByRole('button', { name: '생성 중...' })).toBeDisabled();
   });
 });
+
+it('히스토리의 프롬프트를 선택해 입력란에 다시 불러온다', async () => {
+  const user = userEvent.setup();
+  render(<PromptInput onGenerate={vi.fn()} isLoading={false} promptHistory={['이전 프로필 카드']} />);
+  await user.click(screen.getByRole('button', { name: '이전 프로필 카드' }));
+  expect(screen.getByRole('textbox')).toHaveValue('이전 프로필 카드');
+});

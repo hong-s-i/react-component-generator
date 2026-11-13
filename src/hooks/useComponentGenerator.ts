@@ -1,9 +1,11 @@
 import { useState, useCallback } from 'react';
 import type { GeneratedComponent, Provider } from '../types';
+import { useLocalStorage } from './useLocalStorage';
 import { validatePrompt } from '../utils/validatePrompt';
 
 interface UseComponentGeneratorReturn {
   components: GeneratedComponent[];
+  promptHistory: string[];
   isLoading: boolean;
   error: string | null;
   generate: (prompt: string, apiKey: string | undefined, provider: Provider) => Promise<void>;
@@ -12,7 +14,21 @@ interface UseComponentGeneratorReturn {
 }
 
 export function useComponentGenerator(): UseComponentGeneratorReturn {
-  const [components, setComponents] = useState<GeneratedComponent[]>([]);
+  const [components, setComponents] = useLocalStorage<GeneratedComponent[]>('component-studio.components', [], (value) => {
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((item: unknown) => {
+      if (!item || typeof item !== 'object') return [];
+      const entry = item as Record<string, unknown>;
+      if (typeof entry.id !== 'string' || typeof entry.prompt !== 'string' ||
+          typeof entry.code !== 'string' || typeof entry.createdAt !== 'string') return [];
+      const createdAt = new Date(entry.createdAt);
+      return Number.isNaN(createdAt.getTime()) ? [] : [{
+        id: entry.id, prompt: entry.prompt, code: entry.code, createdAt,
+      }];
+    });
+  });
+  const [promptHistory, setPromptHistory] = useLocalStorage<string[]>('component-studio.prompt-history', [],
+    (value) => Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : []);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,6 +38,7 @@ export function useComponentGenerator(): UseComponentGeneratorReturn {
       setError(validationError);
       return;
     }
+    setPromptHistory((previous) => [prompt, ...previous]);
     setIsLoading(true);
     setError(null);
 
@@ -52,15 +69,15 @@ export function useComponentGenerator(): UseComponentGeneratorReturn {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [setComponents, setPromptHistory]);
 
   const removeComponent = useCallback((id: string) => {
     setComponents((prev) => prev.filter((c) => c.id !== id));
-  }, []);
+  }, [setComponents]);
 
   const clearAll = useCallback(() => {
     setComponents([]);
-  }, []);
+  }, [setComponents]);
 
-  return { components, isLoading, error, generate, removeComponent, clearAll };
+  return { components, promptHistory, isLoading, error, generate, removeComponent, clearAll };
 }
